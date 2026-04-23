@@ -1,10 +1,10 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users
-export const users = sqliteTable("users", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   email: text("email").notNull().default(""),
   password: text("password").notNull(),
@@ -16,8 +16,8 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 // Matches
-export const matches = sqliteTable("matches", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const matches = pgTable("matches", {
+  id: serial("id").primaryKey(),
   matchNumber: integer("match_number").notNull(),
   group: text("group").notNull(),
   round: text("round").notNull(),
@@ -38,9 +38,8 @@ export type InsertMatch = z.infer<typeof insertMatchSchema>;
 export type Match = typeof matches.$inferSelect;
 
 // Match predictions
-// Points: 5 for exact score, 2 for correct outcome
-export const predictions = sqliteTable("predictions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const predictions = pgTable("predictions", {
+  id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   matchId: integer("match_id").notNull(),
   homeScore: integer("home_score").notNull(),
@@ -53,13 +52,10 @@ export type InsertPrediction = z.infer<typeof insertPredictionSchema>;
 export type Prediction = typeof predictions.$inferSelect;
 
 // Group standing predictions
-// User predicts final 1st-4th place for each group
-// Points: 2 per correctly guessed position
-export const groupPredictions = sqliteTable("group_predictions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const groupPredictions = pgTable("group_predictions", {
+  id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  group: text("group").notNull(),       // "A" .. "L"
-  // teams ordered by predicted finish: pos1 = 1st place, etc.
+  group: text("group").notNull(),
   pos1: text("pos1").notNull(),
   pos2: text("pos2").notNull(),
   pos3: text("pos3").notNull(),
