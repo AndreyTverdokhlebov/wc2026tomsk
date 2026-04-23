@@ -20,8 +20,8 @@ const mailer = nodemailer.createTransport({
 
 export async function registerRoutes(httpServer: Server, app: Express) {
 
-  // Auth: Register (now requires email)
-  app.post("/api/auth/register", (req, res) => {
+  // Auth: Register
+  app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, email, password } = req.body;
       if (!username?.trim() || !email?.trim() || !password)
@@ -29,23 +29,22 @@ export async function registerRoutes(httpServer: Server, app: Express) {
       const emailLower = email.trim().toLowerCase();
       if (!/^[^@]+@[^@]+\.[^@]+$/.test(emailLower))
         return res.status(400).json({ message: "Неверный формат email" });
-      if (storage.getUserByUsername(username.trim()))
+      if (await storage.getUserByUsername(username.trim()))
         return res.status(400).json({ message: "Пользователь с таким именем уже существует" });
-      if (storage.getUserByEmail(emailLower))
+      if (await storage.getUserByEmail(emailLower))
         return res.status(400).json({ message: "Этот email уже зарегистрирован" });
-      const user = storage.createUser({ username: username.trim(), email: emailLower, password });
+      const user = await storage.createUser({ username: username.trim(), email: emailLower, password });
       const { password: _, ...safe } = user;
       res.json(safe);
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
 
   // Auth: Login (by email or username)
-  app.post("/api/auth/login", (req, res) => {
+  app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
-      // try username first, then email
-      let user = storage.getUserByUsername(username);
-      if (!user) user = storage.getUserByEmail(username?.toLowerCase?.() ?? "");
+      let user = await storage.getUserByUsername(username);
+      if (!user) user = await storage.getUserByEmail(username?.toLowerCase?.() ?? "");
       if (!user || user.password !== password)
         return res.status(401).json({ message: "Неверный логин/email или пароль" });
       const { password: _, ...safe } = user;
@@ -58,16 +57,14 @@ export async function registerRoutes(httpServer: Server, app: Express) {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ message: "Укажите email" });
-      const user = storage.getUserByEmail(email.trim().toLowerCase());
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
       if (!user) {
-        // Don't reveal if user exists
         return res.json({ message: "Если email зарегистрирован, код отправлен" });
       }
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       resetCodes.set(user.email, { code, expires: Date.now() + 15 * 60 * 1000 });
       console.log(`[RESET CODE] ${user.email} -> ${code}`);
 
-      // Send real email via Mail.ru SMTP
       if (process.env.MAIL_USER && process.env.MAIL_PASS) {
         await mailer.sendMail({
           from: `"ЧМ2026 Прогнозы" <${process.env.MAIL_USER}>`,
@@ -85,7 +82,6 @@ export async function registerRoutes(httpServer: Server, app: Express) {
         return res.json({ message: "Код отправлен на ваш email" });
       }
 
-      // Fallback: SMTP not configured
       return res.status(500).json({ message: "Отправка писем не настроена. Свяжитесь с администратором." });
     } catch (e: any) {
       console.error("[MAIL ERROR]", e.message);
@@ -94,7 +90,7 @@ export async function registerRoutes(httpServer: Server, app: Express) {
   });
 
   // Password reset: verify code and set new password
-  app.post("/api/auth/reset-password", (req, res) => {
+  app.post("/api/auth/reset-password", async (req, res) => {
     try {
       const { email, code, newPassword } = req.body;
       if (!email || !code || !newPassword)
@@ -104,70 +100,56 @@ export async function registerRoutes(httpServer: Server, app: Express) {
         return res.status(400).json({ message: "Код недействителен или истёк" });
       if (entry.code !== code.trim())
         return res.status(400).json({ message: "Неверный код" });
-      const user = storage.getUserByEmail(email.trim().toLowerCase());
+      const user = await storage.getUserByEmail(email.trim().toLowerCase());
       if (!user) return res.status(404).json({ message: "Пользователь не найден" });
-      storage.updateUserPassword(user.id, newPassword);
+      await storage.updateUserPassword(user.id, newPassword);
       resetCodes.delete(user.email);
       res.json({ message: "Пароль успешно изменён" });
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
 
   // Get user by id
-  app.get("/api/users/:id", (req, res) => {
-    const user = storage.getUserById(Number(req.params.id));
+  app.get("/api/users/:id", async (req, res) => {
+    const user = await storage.getUserById(Number(req.params.id));
     if (!user) return res.status(404).json({ message: "Not found" });
     const { password: _, ...safe } = user;
     res.json(safe);
   });
 
   // Leaderboard
-  app.get("/api/leaderboard", (_req, res) => {
-    res.json(storage.getLeaderboard().map(({ password: _, ...u }) => u));
+  app.get("/api/leaderboard", async (_req, res) => {
+    const lb = await storage.getLeaderboard();
+    res.json(lb.map(({ password: _, ...u }) => u));
   });
 
   // Matches
-  app.get("/api/matches", (_req, res) => {
-    res.json(storage.getAllMatches());
+  app.get("/api/matches", async (_req, res) => {
+    res.json(await storage.getAllMatches());
   });
 
-  // ── Match predictions ──────────────────────────────────────────
-  app.get("/api/predictions/:userId", (req, res) => {
-    res.json(storage.getPredictionsByUser(Number(req.params.userId)));
+  // Match predictions
+  app.get("/api/predictions/:userId", async (req, res) => {
+    res.json(await storage.getPredictionsByUser(Number(req.params.userId)));
   });
 
-  // Create or update match prediction
-  // Points: 5 exact score, 2 correct outcome
-  app.post("/api/predictions", (req, res) => {
+  app.post("/api/predictions", async (req, res) => {
     try {
       const { userId, matchId, homeScore, awayScore } = req.body;
       if (userId == null || matchId == null || homeScore == null || awayScore == null)
         return res.status(400).json({ message: "Не все поля заполнены" });
 
-      const match = storage.getMatchById(Number(matchId));
+      const match = await storage.getMatchById(Number(matchId));
       if (!match) return res.status(404).json({ message: "Матч не найден" });
       if (match.status === "finished")
         return res.status(400).json({ message: "Матч уже завершён" });
 
-      const existing = storage.getPredictionByUserAndMatch(Number(userId), Number(matchId));
-
-      // If match is already finished and we're scoring — compute points
-      let pts = 0;
-      if (match.status === "finished" && match.homeScore != null && match.awayScore != null) {
-        const hs = Number(homeScore), as = Number(awayScore);
-        if (hs === match.homeScore && as === match.awayScore) {
-          pts = 5; // exact
-        } else {
-          const predOutcome = hs > as ? "H" : hs < as ? "A" : "D";
-          const realOutcome = match.homeScore > match.awayScore ? "H" : match.homeScore < match.awayScore ? "A" : "D";
-          if (predOutcome === realOutcome) pts = 2;
-        }
-      }
+      const existing = await storage.getPredictionByUserAndMatch(Number(userId), Number(matchId));
 
       if (existing) {
-        const updated = storage.updatePrediction(existing.id, Number(homeScore), Number(awayScore));
+        const updated = await storage.updatePrediction(existing.id, Number(homeScore), Number(awayScore));
         return res.json(updated);
       }
-      const pred = storage.createPrediction({
+      const pred = await storage.createPrediction({
         userId: Number(userId), matchId: Number(matchId),
         homeScore: Number(homeScore), awayScore: Number(awayScore),
       });
@@ -175,21 +157,18 @@ export async function registerRoutes(httpServer: Server, app: Express) {
     } catch (e: any) { res.status(400).json({ message: e.message }); }
   });
 
-  // ── Group standing predictions ─────────────────────────────────
-  // GET all group predictions for a user
-  app.get("/api/group-predictions/:userId", (req, res) => {
-    res.json(storage.getGroupPredictionsByUser(Number(req.params.userId)));
+  // Group standing predictions
+  app.get("/api/group-predictions/:userId", async (req, res) => {
+    res.json(await storage.getGroupPredictionsByUser(Number(req.params.userId)));
   });
 
-  // POST — create or update group prediction
-  // Points: 2 per correctly guessed position (awarded after group stage ends)
-  app.post("/api/group-predictions", (req, res) => {
+  app.post("/api/group-predictions", async (req, res) => {
     try {
       const { userId, group, pos1, pos2, pos3, pos4 } = req.body;
       if (!userId || !group || !pos1 || !pos2 || !pos3 || !pos4)
         return res.status(400).json({ message: "Не все позиции заполнены" });
 
-      const result = storage.upsertGroupPrediction({
+      const result = await storage.upsertGroupPrediction({
         userId: Number(userId), group, pos1, pos2, pos3, pos4,
       });
       res.json(result);
