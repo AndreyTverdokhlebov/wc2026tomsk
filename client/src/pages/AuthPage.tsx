@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Eye, EyeOff, Share2 } from "lucide-react";
-import welcomePhoto from "@assets/welcome-photo.jpeg";
+// Welcome photo loaded as URL to avoid build path issues
+const welcomePhoto = "/welcome-photo.jpeg";
 
 type Screen = "welcome" | "login" | "register" | "forgot" | "reset";
 
