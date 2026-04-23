@@ -20,7 +20,7 @@ export default function InstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIOSHint, setShowIOSHint] = useState(false);
 
-  const APP_URL = "https://www.perplexity.ai/computer/a/wc2026-tXp3UpVvQ5KOMB5FgYMXUA";
+  const APP_URL = "https://wc2026tomsk.ru";
 
   useEffect(() => {
     const handler = (e: Event) => {
