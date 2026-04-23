@@ -10,7 +10,7 @@ const welcomePhoto = "/welcome-photo.jpeg";
 
 type Screen = "welcome" | "login" | "register" | "forgot" | "reset";
 
-const APP_URL = "https://www.perplexity.ai/computer/a/wc2026-tXp3UpVvQ5KOMB5FgYMXUA";
+const APP_URL = "https://wc2026tomsk.ru";
 
 // Detect iOS
 function isIOS() {
