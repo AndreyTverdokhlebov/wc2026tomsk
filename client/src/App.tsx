@@ -7,6 +7,7 @@ import { useState, createContext, useContext } from "react";
 import { getUser, setUser, type AuthUser } from "@/lib/auth";
 
 import AuthPage from "@/pages/AuthPage";
+import HomePage from "@/pages/HomePage";
 import MatchesPage from "@/pages/MatchesPage";
 import LeaderboardPage from "@/pages/LeaderboardPage";
 import GroupsPage from "@/pages/GroupsPage";
@@ -61,6 +62,11 @@ function App() {
         <Router hook={useHashLocation}>
           <Switch>
             <Route path="/" component={() => (
+              <Layout>
+                <HomePage />
+              </Layout>
+            )} />
+            <Route path="/matches" component={() => (
               <Layout>
                 <MatchesPage />
               </Layout>
