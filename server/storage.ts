@@ -14,8 +14,8 @@ let _db: ReturnType<typeof drizzle>;
 
 function getPool() {
   if (!pool) {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error("DATABASE_URL is not set");
+    const url = process.env.DATABASE_URL || "postgresql://postgres:DoaZoyxWEFRaaQwiasROHbDdJQDzGBNe@autorack.proxy.rlwy.net:15012/railway";
+    console.log("[DB] Connecting to:", url.substring(0, 40) + "...");
     pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false } });
     pool.on("error", (err) => console.error("[PG Pool Error]", err.message));
   }
