@@ -1,4 +1,7 @@
-import "dotenv/config";
+// dotenv not needed on Railway - env vars are injected directly
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
 import express, { Response, NextFunction } from 'express';
 import type { Request } from 'express';
 import { registerRoutes } from "./routes";
