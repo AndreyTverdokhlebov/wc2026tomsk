@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { eq, desc, and } from "drizzle-orm";
 import {
   users, matches, predictions, groupPredictions,
@@ -9,17 +9,11 @@ import {
   type GroupPrediction, type InsertGroupPrediction,
 } from "@shared/schema";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
-
-pool.on("error", (err) => console.error("[PG Pool Error]", err.message));
-
-export const db = drizzle(pool);
+const client = postgres(process.env.DATABASE_URL!, { ssl: "require" });
+export const db = drizzle(client);
 
 async function initDB() {
-  await pool.query(`
+  await client`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
@@ -64,7 +58,7 @@ async function initDB() {
       pos4 TEXT NOT NULL,
       points INTEGER NOT NULL DEFAULT 0
     );
-  `);
+  `;
 }
 
 export interface IStorage {
