@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/App";
-import { Trophy, Calendar, LogOut, User, Users, GitBranch, Share2 } from "lucide-react";
+import { Trophy, Calendar, LogOut, User, Users, GitBranch, Share2, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,8 @@ if (typeof window !== "undefined") {
 }
 
 const NAV = [
-  { path: "/", label: "Прогнозы", icon: Calendar, testId: "nav-matches" },
+  { path: "/", label: "Главная", icon: Home, testId: "nav-home" },
+  { path: "/matches", label: "Прогнозы", icon: Calendar, testId: "nav-matches" },
   { path: "/groups", label: "Группы", icon: Users, testId: "nav-groups" },
   { path: "/bracket", label: "Сетка", icon: GitBranch, testId: "nav-bracket" },
   { path: "/leaderboard", label: "Рейтинг", icon: Trophy, testId: "nav-leaderboard" },
