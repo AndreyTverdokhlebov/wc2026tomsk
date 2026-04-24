@@ -9,15 +9,32 @@ import {
   type GroupPrediction, type InsertGroupPrediction,
 } from "@shared/schema";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+let pool: Pool;
+let _db: ReturnType<typeof drizzle>;
+
+function getPool() {
+  if (!pool) {
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error("DATABASE_URL is not set");
+    pool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false } });
+    pool.on("error", (err) => console.error("[PG Pool Error]", err.message));
+  }
+  return pool;
+}
+
+function getDb() {
+  if (!_db) _db = drizzle(getPool());
+  return _db;
+}
+
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(_, prop) {
+    return (getDb() as any)[prop];
+  }
 });
 
-export const db = drizzle(pool);
-
 async function initDB() {
-  await pool.query(`
+  await getPool().query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
